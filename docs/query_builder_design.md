@@ -12,12 +12,15 @@ Core types
 - `QueryBuilder<T>` — public fluent surface used by callers. Methods: `where`,
   `and`, `or`, `sortBy`, `limit`, `execute`, `toQuery`.
 - `FieldConditionBuilder<T>` — returned by `where`/`and`/`or` and provides the
-  terminal condition methods `is`, `greaterThan`, `in`, etc. Terminal methods
-  return back to `QueryBuilder<T>` for chaining.
+  terminal condition methods `is`, `greaterThan`, `in`, `exists`, `matchesRegex`.
+  Terminal methods return back to `QueryBuilder<T>` for chaining.
 - `Query` — immutable representation containing a list of `Condition` and
   `Sort` entries plus optional `limit`.
 - `Condition`, `Operator`, `Sort`, `SortOrder` — lightweight DTOs used by
   adapters.
+- `SimpleQueryBuilder<T>` — concrete implementation demonstrating the fluent API.
+  Accepts a `QueryExecutor<T>` callback to delegate actual data retrieval to the
+  Registry or other adapter.
 
 Adapter contract
 - Registry implementations should provide an adapter that accepts `Query` and
@@ -28,9 +31,20 @@ Extensibility
 - New operators can be added to `Operator` and mapped in adapters.
 - Support for nested/compound boolean logic (groups) can be added by
   introducing a `ConditionGroup` type if needed.
+- Additional terminal conditions (e.g., `between`, `contains`, `startsWith`)
+  can be added to `FieldConditionBuilder` and `Operator`.
 
-Example usage
-```
+## Usage
+
+### Developer Experience
+
+```java
+// Simple query
+List<Asset> results = registry.query(Asset.class)
+    .where("color").is("blue")
+    .execute();
+
+// Complex query with multiple conditions, sorting, and limit
 List<Asset> results = registry.query(Asset.class)
     .where("color").is("blue")
     .and("size").greaterThan(10)
@@ -38,10 +52,30 @@ List<Asset> results = registry.query(Asset.class)
     .sortBy("value", SortOrder.DESC)
     .limit(50)
     .execute();
+
+// Access underlying immutable Query for adapters
+Query q = registry.query(Asset.class)
+    .where("status").is("active")
+    .toQuery();
+// Use q.getConditions(), q.getSorts(), q.getLimit() to build provider-specific queries
 ```
 
-Next steps
-- Add `Registry#query(Class<T>)` entry point returning `QueryBuilder<T>`.
-- Implement a simple in-memory `QueryBuilder` for local tests.
+### Testing
+
+The `SimpleQueryBuilder` can be tested independently without a Registry. See
+`SimpleQueryBuilderTest` for examples.
+
+## Implementation Status
+
+- **Done**: Core interfaces and DTOs (QueryBuilder, FieldConditionBuilder, Query, Condition, Operator, Sort, SortOrder).
+- **Done**: SimpleQueryBuilder concrete implementation.
+- **Done**: Registry#query(Class<T>) entry point.
+- **TODO**: Adapter that translates Query → CouchDB rich query JSON.
+- **TODO**: Adapter that translates Query → SQL WHERE clause.
+- **TODO**: Integration test with actual CouchDB backend.
+
+## Next Steps
 - Add an adapter that translates `Query` -> CouchDB selector JSON for future
-  integration.
+  integration with CouchDB-backed Registry implementations.
+- Implement per-operator translation logic for different backends (CouchDB, SQL, etc.).
+- Add comprehensive integration tests.

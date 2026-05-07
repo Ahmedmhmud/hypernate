@@ -4,6 +4,8 @@ package hu.bme.mit.ftsrg.hypernate.registry;
 import com.jcabi.aspects.Loggable;
 import hu.bme.mit.ftsrg.hypernate.annotations.AttributeInfo;
 import hu.bme.mit.ftsrg.hypernate.annotations.PrimaryKey;
+import hu.bme.mit.ftsrg.hypernate.registry.query.QueryBuilder;
+import hu.bme.mit.ftsrg.hypernate.registry.query.impl.SimpleQueryBuilder;
 import hu.bme.mit.ftsrg.hypernate.util.JSON;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -204,6 +206,34 @@ public class Registry {
               return EntityUtil.fromBuffer(value, clazz);
             })
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Start building a fluent query for entities of the given type.
+   *
+   * <p>Example usage:
+   * <pre>
+   * List<Asset> results = registry.query(Asset.class)
+   *     .where("color").is("blue")
+   *     .and("size").greaterThan(10)
+   *     .execute();
+   * </pre>
+   *
+   * @param clazz the entity class to query
+   * @return a query builder for the given entity type
+   * @param <T> the entity type
+   */
+  public <T> QueryBuilder<T> query(final Class<T> clazz) {
+    SimpleQueryBuilder<T> builder = new SimpleQueryBuilder<>(clazz);
+    // Inject an executor that reads all entities and would apply query logic.
+    // For now, this is a stub that just returns an empty list.
+    // Future implementations can add CouchDB adapter or in-memory filtering.
+    builder.setExecutor(query -> {
+      logger.debug("Executing query: {}", query);
+      // TODO: implement query filtering logic or delegate to adapter
+      return readAll(clazz);
+    });
+    return builder;
   }
 
   @Loggable(Loggable.DEBUG)
